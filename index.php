@@ -1,43 +1,57 @@
 <?php
-$token = "#token";
-$admin = "#admin_id";   
-$botim = "#bot_username";   ///////*@*Не пиши знак
-function bot($method,$datas=[]){
-    $url = "https://api.telegram.org/bot".$token."/".$method;
+
+define('API_KEY', '#'); //Bot tokeni uchun joy
+$bot_username = "#";   //*@* sichqoncha belgisisiz joylang
+
+
+//Pastdagi comment qilingan joyni webhook qilish uchun vaqtinchalik ochib turasiz.
+//echo "https://api.telegram.org/bot" . API_KEY . "/setwebhook?url=" . $_SERVER['SERVER_NAME'] . "" . $_SERVER['SCRIPT_NAME'];
+
+
+
+function bot($method, $datas = []){
+
+    $url = "https://api.telegram.org/bot" . API_KEY . "/" . $method;
     $ch = curl_init();
-    curl_setopt($ch,CURLOPT_URL,$url);
-    curl_setopt($ch,CURLOPT_RETURNTRANSFER,true);
-    curl_setopt($ch,CURLOPT_POSTFIELDS,$datas);
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $datas);
     $res = curl_exec($ch);
-    if(curl_error($ch)){
+    if (curl_error($ch))
+    {
         var_dump(curl_error($ch));
-    }else{
+    }
+    else
+    {
         return json_decode($res);
     }
 }
-$update = json_decode(file_get_contents('php://input'));  
-$message = $update->message;
-$chat_id = $message->chat->id;
-$mid = $message->message_id;
-$cid = $message->chat->id;
-$uid= $message->from->id;
-$ty = $message->chat->type;
-$title = $message->chat->title;
 
-/// Чтобы проверить, работает ли бот /////
-if($tx == "bot"){
-    if($tx = $admin){
-bot('deleteMessage',[
-'chat_id'=>$message->chat->id,
-'text'=>"бот работает",
-]);
+$update = json_decode(file_get_contents('php://input'));
+
+$message = $update->message;
+$message_id = $message->message_id;
+$chat_id = $message->chat->id;
+$text = $message->text;
+
+if (!$chat_id)
+{
+    $callback = $update->callback_query;
+    $chat_id = $callback->message->chat->id;
+    $message_id = $callback->message->message_id;
 }
-}
-if($tx == "Admin" or $tx == "admin"){
-    bot('replyMessage',[
-'chat_id'=>$message->chat->id,
-'text'=>"привет",
-]);
+
+if($text=="/start"){
+    bot('sendmessage',[
+        'chat_id'=>$chat_id,
+        'text'=>"Ushbu bot guruhda kirdi-chiqdilarni o'chirishga mo'ljallangan",
+        'parse_mode'=>"markdown",
+        'reply_markup' => json_encode([
+            'inline_keyboard'=>[
+             [['text'=>"➕ Guruhga qo'shish➕",'url'=>'t.me/$bot_username?startgroup=new']]
+         ]
+     ])
+    ]);
 }
 
 if(isset($message->new_chat_member) or isset($message->left_chat_member)){
@@ -46,117 +60,43 @@ if(isset($message->new_chat_member) or isset($message->left_chat_member)){
         'message_id'=>$message->message_id,
     ]);
 }
-///////Знать команды бота
-if($tx=="/start"){
-bot('sendmessage',[
-'chat_id'=>$cid,
-'text'=>"Этот бот очистит вашу группу от записей!",
-'parse_mode'=>"markdown",
-'reply_markup' => json_encode([
-                'inline_keyboard'=>[
-                   [['text'=>"➕ Gruppaga Qoʻshish➕",'url'=>'t.me/$botim?startgroup=new'],
-]
-]
-])
-]);
-}
 
 
-/// Gruppaga start
-if($ty=="supergroup" or $ty == "group"){
-if(strpos($tx == "/start" or $tx=="/start@$botim" ) !==false){
- $cr=bot('getchatmember',[
-    'chat_id'=>$cid,
-    'user_id'=>$uid
+if($message->new_chat_participant->username == $bot_username and $message->new_chat_member->username == $bot_username){
+    bot('sendmessage',[
+        'chat_id'=>$chat_id,
+        'text'=>"Iltimos, botni guruhga admin qiling. (Agar admin bo'lmagan bo'lsa!)\n\n Bot guruhda kirdi-chiqdilarni o'chirib turadi...",
     ]);
-$cr = $cr->result->status;
-if($cr=="creator"or $cr=="administrator"){    
-$yes = file_get_contents("data/gruppalar.dat");
-
-if($yes){
-bot('sendmessage',[
-'chat_id'=>$cid,
-'text'=>"Этот бот был перезапущен в группе $title !",
-'parse_mode'=>"markdown"
-]);
-
-}else{
-
-bot('sendmessage',[
-'chat_id'=>$cid,
-'text'=>"Этот бот был перезапущен в группе $title !",
-'parse_mode'=>"markdown"
-]);
-file_put_contents("data/gruppalar.dat","ok");
-}
-}
+    if($chat_id){
+     $local_database = file_get_contents("saved_groups_id.dat"); 
+     if(mb_stripos($local_database, $chat_id) !== false){ 
+     }else{ 
+        if($chat_id<0){
+            file_put_contents("saved_groups_id.dat", "$local_database\n$chat_id");
+        }
+    } 
 }
 }
 
+if($message->left_chat_participant->username == $bot_username and $message->left_chat_member->username == $bot_username){
+
+    $local_database = file_get_contents("saved_groups_id.dat"); 
+    $local_database = str_replace("\n$chat_id", "", $local_database);
+    file_put_contents("saved_groups_id.dat", "$local_database");
+
+}
 
 
+if($text == "/stat"){
 
+    $date = date('d.m.Y | H:i:s', strtotime('2 hour'));
+    $local_database = file_get_contents("saved_groups_id.dat"); 
+    $groups_count = substr_count($local_database,"-"); 
 
-
-
-//●●●●●●●●} Members and Group {●●●●●●●●//  
-//●●●●●●●●} Statika {●●●●●●●●//  
-
-
-       $baza = file_get_contents("data/gruppalar.dat"); 
-if(mb_stripos($baza, $chat_id) !== false){ 
-}else{ 
-file_put_contents("data/gruppalar.dat", "$baza\n$chat_id");
-} 
-
-
- if($callback_data == 'stat') {
-     $kun = date('d.m.Y | H:i:s', strtotime('5 hour'));
-$baza = file_get_contents("data/gruppalar.dat"); 
-$baza1 = substr_count($baza,"\n"); 
-$gruppa = substr_count($baza,"-"); 
-$odam = $baza1 - $gruppa; 
-            
-        $text = "Пользователи ботов: \ n
-   🌎Все: $base1
-   👤Пользователь: $odam
-   👥Группа: $gruppa
-
-📆 Последнее обновление: $kun";
-                  $res = ('editmessagetext', [
-            'chat_id' => $chat_id,
-            'message_id' => $mid,
-            'text' => $text,
-            'parse_mode' => 'markdown',
-            'reply_markup' => json_encode([
-                'inline_keyboard' => [
-       [ ['text' => '♻Обновить♻', 'callback_data' => "stat"] ],
-                   
-                ]
-            ])
-        ]);
-    }
-
-
-if($mtext == "/Stat" or $mtext == "/stat"){ 
-$baza = file_get_contents("data/gruppalar.dat"); 
-$baza1 = substr_count($baza,"\n"); 
-$gruppa = substr_count($baza,"-"); 
-$odam = $baza1 - $gruppa; 
-
-     ('sendMessage',[ 
-     'chat_id'=>$chat_id, 
-     'text'=>"Пользователи ботов: \ n
-   🌎Все: $base1
-   👤Пользователь: $odam
-   👥Группа: $gruppa
-
-📆 Последнее обновление: $kun",
-     'parse_mode'=>'markdown', 
-  'reply_markup'=>json_encode([   
-   'inline_keyboard'=>[   
-        [['text'=>'♻Обновить♻', 'callback_data' => "/Stat"]],
-]   
-])   
-]); 
+    bot('sendMessage',[ 
+       'chat_id'=>$chat_id, 
+       'text'=>"Statistika: \n
+       👥Guruhlar soni: $groups_count ta\n
+       📆 Oxirgi yangilanish: $date",
+   ]); 
 } 
