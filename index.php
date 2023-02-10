@@ -48,7 +48,7 @@ if($text=="/start"){
         'parse_mode'=>"markdown",
         'reply_markup' => json_encode([
             'inline_keyboard'=>[
-             [['text'=>"➕ Guruhga qo'shish➕",'url'=>'t.me/$bot_username?startgroup=new']]
+             [['text'=>"➕ Guruhga qo'shish➕",'url'=>"t.me/$bot_username?startgroup=new"]]
          ]
      ])
     ]);
